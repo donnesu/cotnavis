@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ROS2 Replay Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  </head>
+  <body>
+    <main class="dashboard-shell">
+      <header class="page-header">
+        <h1>ROS2 Bag Replay Planner Visualization</h1>
+      </header>
+
+      <header class="command-panel">
+        <div class="section-label">Language Command</div>
+        <div id="language-command" class="command-text">Awaiting command</div>
+      </header>
+
+      <section class="panel observation-panel" aria-label="Observation timeline">
+        <div class="section-label">Observation Timeline</div>
+        <div id="observation-timeline" class="observation-grid empty-state">
+          <div class="placeholder">No camera frames received</div>
+        </div>
+      </section>
+
+      <section class="panel planner-panel" aria-label="Planner trace">
+        <div class="planner-label-row">
+          <div class="section-label">Foresight Planner Trace</div>
+          <div class="section-label current-observation-label">Current Observation</div>
+        </div>
+
+        <div class="planner-layout">
+          <div class="queue-column">
+            <div class="queue-heading">Legged Deployment Reflection Queue</div>
+            <div id="planner-queue" class="planner-queue empty-state">
+              <div class="placeholder">No planner events received</div>
+            </div>
+          </div>
+
+          <div class="camera-column">
+            <div class="current-camera-frame">
+              <div class="current-camera-image">
+                <img id="current-camera" alt="Current observation camera feed">
+                <div id="current-camera-placeholder" class="placeholder">current camera frame</div>
+              </div>
+              <div id="live-pill" class="live-pill">Waiting</div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+  </body>
+</html>
