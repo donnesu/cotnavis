@@ -1,0 +1,3 @@
+std_msgs/String goal_command
+---
+amrl_msgs/ForesightPlannerMsg foresight_plan

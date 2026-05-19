@@ -1,0 +1,4 @@
+amrl_msgs/GPSMsg start
+amrl_msgs/GPSArrayMsg goals
+---
+amrl_msgs/GPSArrayMsg plan

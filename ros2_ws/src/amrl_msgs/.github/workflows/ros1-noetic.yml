@@ -1,0 +1,50 @@
+name: ROS1-Noetic
+on: push
+
+jobs:
+  build-test-noetic:
+    name: ROS1-Noetic
+    runs-on: ubuntu-22.04
+    container: ros:noetic
+
+    defaults:
+      run:
+        shell: bash -l {0}
+
+    steps:
+      - name: Update apt and install dependencies
+        run: |
+          apt-get update -y
+          apt-get install -y git build-essential cmake python3-rosdep python-is-python3 ros-noetic-rosbuild \
+            ros-noetic-geometry-msgs ros-noetic-nav-msgs ros-noetic-sensor-msgs ros-noetic-std-msgs \
+            ros-noetic-tf ros-noetic-angles
+
+      - name: Initialize rosdep
+        run: |
+          rm -f /etc/ros/rosdep/sources.list.d/20-default.list
+          rosdep init || true
+          rosdep update
+
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          submodules: 'recursive'
+
+      - name: Build amrl_msgs
+        run: |
+          source /opt/ros/noetic/setup.bash
+          export ROS_PACKAGE_PATH=$GITHUB_WORKSPACE:$ROS_PACKAGE_PATH
+          export ROS_VERSION=1
+          make
+
+      - name: Verify build artifacts
+        run: |
+          if [ ! -d "./build" ]; then
+            echo "Error: build directory not found"
+            exit 1
+          fi
+          if [ ! -d "./msg_gen" ]; then
+            echo "Error: msg_gen directory not found"
+            exit 1
+          fi
+          echo "✓ ROS1 build artifacts verified successfully" 

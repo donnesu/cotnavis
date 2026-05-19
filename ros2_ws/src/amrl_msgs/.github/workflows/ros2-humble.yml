@@ -1,0 +1,66 @@
+name: ROS2-Humble
+on: push
+
+jobs:
+  build-test-humble:
+    name: ROS2-Humble
+    runs-on: ubuntu-22.04
+    container: ros:humble
+
+    defaults:
+      run:
+        shell: bash -l {0}
+
+    steps:
+      - name: Update apt and install dependencies
+        run: |
+          apt-get update -y
+          apt-get install -y git build-essential cmake python3-colcon-common-extensions \
+            ros-humble-geometry-msgs ros-humble-nav-msgs ros-humble-sensor-msgs ros-humble-std-msgs
+
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          submodules: 'recursive'
+
+      - name: Build and install amrl_msgs
+        run: |
+          source /opt/ros/humble/setup.bash
+          export ROS_VERSION=2
+          make
+
+      - name: Verify build artifacts
+        run: |
+          if [ ! -d "./build" ]; then
+            echo "Error: build directory not found"
+            exit 1
+          fi
+          if [ ! -f "./install/share/amrl_msgs/local_setup.bash" ]; then
+            echo "Error: install/share/amrl_msgs/local_setup.bash not found"
+            exit 1
+          fi
+          echo "✓ ROS2 build artifacts verified successfully"
+
+      - name: Display workspace layout
+        run: ls -R
+
+      - name: Test package installation
+        run: |
+          source /opt/ros/humble/setup.bash
+          source ./install/share/amrl_msgs/local_setup.bash
+          if ! ros2 interface list | grep -q "amrl_msgs"; then
+            echo "Error: amrl_msgs interfaces not found in ROS2"
+            exit 1
+          fi
+          echo "✓ Package installation verified successfully"
+
+      - name: List generated interfaces
+        run: |
+          source /opt/ros/humble/setup.bash
+          source ./install/share/amrl_msgs/local_setup.bash
+          echo "Generated message interfaces:"
+          ros2 interface list | grep "amrl_msgs" | grep "msg" || echo "No message interfaces found"
+          echo "Generated service interfaces:"
+          ros2 interface list | grep "amrl_msgs" | grep "srv" || echo "No service interfaces found"
+          echo "Generated action interfaces:"
+          ros2 interface list | grep "amrl_msgs" | grep "action" || echo "No action interfaces found" 

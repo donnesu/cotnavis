@@ -1,0 +1,4 @@
+sensor_msgs/Image query_image
+---
+BBox2DArrayMsg bounding_boxes
+BBox2DArrayMsg nms_removed_bounding_boxes
