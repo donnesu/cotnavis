@@ -7,6 +7,7 @@ const currentCamera = document.getElementById("current-camera");
 const currentCameraPlaceholder = document.getElementById("current-camera-placeholder");
 const livePill = document.getElementById("live-pill");
 const observationMosaicTilesCache = new Map();
+const plannerArtifactLeftCropCache = new Map();
 let observationRenderVersion = 0;
 
 function clearElement(element) {
@@ -121,6 +122,41 @@ async function splitMosaicIntoTiles(imageSrc, rows = 2, cols = 2) {
   return result;
 }
 
+async function cropPlannerArtifactLeftSide(imageSrc) {
+  if (!imageSrc) {
+    return imageSrc;
+  }
+
+  if (plannerArtifactLeftCropCache.has(imageSrc)) {
+    return plannerArtifactLeftCropCache.get(imageSrc);
+  }
+
+  let result = imageSrc;
+  try {
+    const image = await loadImage(imageSrc);
+    const cropHeight = image.naturalHeight;
+    const cropWidth = Math.floor(image.naturalWidth / 2);
+    const isSplitPlanImage = image.naturalWidth >= image.naturalHeight * 1.3;
+
+    if (isSplitPlanImage && cropWidth > 0 && cropHeight > 0) {
+      const canvas = document.createElement("canvas");
+      canvas.width = cropWidth;
+      canvas.height = cropHeight;
+
+      const context = canvas.getContext("2d");
+      if (context) {
+        context.drawImage(image, 0, 0, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+        result = canvas.toDataURL("image/jpeg", 0.92);
+      }
+    }
+  } catch (_error) {
+    result = imageSrc;
+  }
+
+  plannerArtifactLeftCropCache.set(imageSrc, result);
+  return result;
+}
+
 async function expandObservationFrames(history) {
   const expandedFrames = [];
 
@@ -212,6 +248,9 @@ function blockTitle(block) {
   if (block.type === "rejected") {
     return "REJECTED";
   }
+  if (block.type === "fix") {
+    return "FIX";
+  }
   if (block.type === "planned_path") {
     return "PLANNED PATH";
   }
@@ -219,6 +258,10 @@ function blockTitle(block) {
 }
 
 function blockBodyText(block) {
+  if (block.display_text !== null && block.display_text !== undefined) {
+    return block.display_text;
+  }
+
   const lines = [];
 
   if (block.reason) {
@@ -240,15 +283,32 @@ function blockBodyText(block) {
   return lines.join("\n");
 }
 
-function renderImageArtifact(block, body) {
+function shouldUseImageOnlyBody(block) {
+  return block.type === "accepted" || block.type === "rejected";
+}
+
+function renderImageArtifact(block, body, isImageOnlyCard) {
   const artifact = block.motion_image || block.image_plan?.image;
-  if (artifact) {
-    const image = document.createElement("img");
-    image.src = artifact;
-    image.alt = `${blockTitle(block)} visual artifact`;
-    image.className = "planned-path-image";
-    body.appendChild(image);
+  if (!artifact) {
+    return false;
   }
+
+  const image = document.createElement("img");
+  image.src = artifact;
+  image.alt = blockTitle(block) + " visual artifact";
+  image.className = "planned-path-image";
+  if (isImageOnlyCard) {
+    image.classList.add("planned-path-image-fill");
+  }
+  body.appendChild(image);
+
+  void cropPlannerArtifactLeftSide(artifact).then((cropped) => {
+    if (cropped) {
+      image.src = cropped;
+    }
+  });
+
+  return true;
 }
 
 function renderPlannerQueue(queue) {
@@ -276,12 +336,22 @@ function renderPlannerQueue(queue) {
 
     const body = document.createElement("div");
     body.className = "queue-body";
+    const isImageOnlyCard = shouldUseImageOnlyBody(block);
+    if (isImageOnlyCard) {
+      body.classList.add("queue-body-image-only");
+    }
 
-    renderImageArtifact(block, body);
+    if (blockTitle(block) != "FIX") {
+      renderImageArtifact(block, body, isImageOnlyCard);
+    }
 
-    const text = document.createElement("p");
-    text.textContent = blockBodyText(block) || "No reason text provided.";
-    body.appendChild(text);
+    const bodyText = blockBodyText(block);
+
+    if (!isImageOnlyCard) {
+      const text = document.createElement("p");
+      text.textContent = bodyText || "No reason text provided.";
+      body.appendChild(text);
+    }
 
     item.appendChild(title);
     item.appendChild(status);

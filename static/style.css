@@ -20,6 +20,9 @@
   --refining-bg: #f6f1ea;
   --refining-border: #b89b75;
   --refining-text: #72552d;
+  --fix-bg: #f5f5f5;
+  --fix-border: #000000;
+  --fix-text: #252525;
   --executing-bg: #eaf4ec;
   --executing-border: #6d9a79;
   --executing-text: #2f6b3c;
@@ -274,6 +277,12 @@ body {
   border-color: var(--refining-border);
 }
 
+.queue-block-fix {
+  color: var(--fix-border);
+  background: var(--fix-bg);
+  border-color: var(--fix-border);
+}
+
 .queue-title {
   color: var(--text);
   font-size: 13px;
@@ -310,15 +319,25 @@ body {
   color: var(--refining-text);
 }
 
+.queue-block-fix .queue-status {
+  color: var(--fix-text);
+}
+
 .queue-body {
   flex: 1;
   min-height: 0;
   margin-top: 14px;
   color: var(--body-text);
-  font-size: 12px;
+  font-size: 20px;
   line-height: 1.25;
   white-space: pre-line;
   overflow: auto;
+}
+
+.queue-body-image-only {
+  display: flex;
+  align-items: stretch;
+  overflow: hidden;
 }
 
 .queue-body p {
@@ -331,6 +350,14 @@ body {
   border: 1px solid #c7cdd6;
   border-radius: 6px;
   margin-bottom: 10px;
+  object-fit: contain;
+  background: #ffffff;
+}
+
+.planned-path-image-fill {
+  height: 100%;
+  margin-bottom: 0;
+  object-fit: cover;
 }
 
 .planned-path-placeholder {

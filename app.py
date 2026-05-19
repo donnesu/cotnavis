@@ -1,4 +1,5 @@
 import base64
+import re
 import threading
 import time
 from collections import deque
@@ -196,6 +197,28 @@ def bool_data(value):
     return bool(data) if data is not None else None
 
 
+def extract_fix_text(*texts):
+    for text in texts:
+        if not text:
+            continue
+        match = re.search(r"<fix>\s*(.*?)\s*</fix>", text, flags=re.IGNORECASE | re.DOTALL)
+        if match:
+            cleaned = " ".join(match.group(1).split())
+            if cleaned:
+                return cleaned
+
+    for text in texts:
+        if not text:
+            continue
+        cleaned = re.sub(r"<[^>]+>", " ", text)
+        cleaned = re.sub(r"\s*\[[^\]]+\]\s*$", "", cleaned)
+        cleaned = " ".join(cleaned.split())
+        if cleaned:
+            return cleaned
+
+    return "No suggested fix provided."
+
+
 def encode_compressed_image(msg):
     if msg is None:
         return None
@@ -316,31 +339,68 @@ def update_command_comparison_for_cmd(msg, timestamp):
     return context
 
 
-def normalize_foresight_block(msg, topic, timestamp):
+def select_plan_image(motion_image, image_plan):
+    if motion_image:
+        return motion_image
+    if isinstance(image_plan, dict):
+        return image_plan.get("image")
+    return None
+
+
+def normalize_foresight_blocks(msg, topic, timestamp):
     verdict = bool_data(getattr(msg, "verdict", None))
-    block_type = "accepted" if verdict is True else "rejected"
-    status = "ACCEPTED" if verdict is True else "REJECTED"
     motion_image = encode_compressed_image(getattr(msg, "motion_image", None))
     path = getattr(msg, "path", None)
+
+    reason = string_data(getattr(msg, "reason", None))
+    thinking_text = string_data(getattr(msg, "thinking_text", None))
+    motion_text = string_data(getattr(msg, "motion_text", None))
+    critic_text = string_data(getattr(msg, "critic_text", None))
 
     with state_lock:
         image_plan = state["latest_image_plan"]
 
-    return {
-        "type": block_type,
+    plan_image = select_plan_image(motion_image, image_plan)
+    base_block = {
         "reflection_id": getattr(msg, "reflection_id", None),
         "verdict": verdict,
-        "reason": string_data(getattr(msg, "reason", None)),
-        "thinking_text": string_data(getattr(msg, "thinking_text", None)),
-        "motion_text": string_data(getattr(msg, "motion_text", None)),
-        "critic_text": string_data(getattr(msg, "critic_text", None)),
+        "reason": reason,
+        "thinking_text": thinking_text,
+        "motion_text": motion_text,
+        "critic_text": critic_text,
         "path_pose_count": len(getattr(path, "poses", []) or []),
-        "motion_image": motion_image,
+        "motion_image": plan_image,
         "image_plan": image_plan,
-        "status": status,
         "topic": topic,
         "received_at": timestamp,
     }
+
+    if verdict is True:
+        return [
+            {
+                **base_block,
+                "type": "accepted",
+                "status": "ACCEPTED",
+                "display_text": "",
+            }
+        ]
+
+    suggestion = extract_fix_text(reason, critic_text, motion_text, thinking_text)
+    return [
+        {
+            **base_block,
+            "type": "rejected",
+            "status": "REJECTED",
+            "display_text": "",
+        },
+        {
+            **base_block,
+            "type": "fix",
+            "status": "FIX",
+            "display_text": suggestion,
+            "motion_image": None,
+        },
+    ]
 
 
 class ReplayDashboardNode(Node):
@@ -419,9 +479,12 @@ class ReplayDashboardNode(Node):
             }
 
     def on_foresight_status(self, msg):
-        block = normalize_foresight_block(msg, FORESIGHT_STATUS_TOPIC, received_at())
+        blocks = normalize_foresight_blocks(msg, FORESIGHT_STATUS_TOPIC, received_at())
         with state_lock:
-            state["foresight_queue"].append(block)
+            accepted_seen = any(block.get("status") == "ACCEPTED" for block in state["foresight_queue"])
+            if accepted_seen:
+                state["foresight_queue"].clear()
+            state["foresight_queue"].extend(blocks)
             queue = list(state["foresight_queue"])
         socketio.emit("foresight_trace", {"queue": queue})
 
