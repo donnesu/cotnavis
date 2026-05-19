@@ -4,14 +4,17 @@ import time
 from collections import deque
 from datetime import datetime, timezone
 
-import cv2
+try:
+    import cv2
+except ImportError:
+    cv2 = None
 from flask import Flask, render_template
 from flask_socketio import SocketIO
+
 
 try:
     import rclpy
     from amrl_msgs.msg import ForesightPlannerMsg
-    from cv_bridge import CvBridge
     from geometry_msgs.msg import Twist
     from nav_msgs.msg import Path
     from rclpy.node import Node
@@ -20,7 +23,6 @@ try:
     from visualization_msgs.msg import MarkerArray
 except ImportError as exc:
     rclpy = None
-    CvBridge = None
     Node = object
     Bool = None
     CompressedImage = None
@@ -35,6 +37,10 @@ except ImportError as exc:
 else:
     ROS_IMPORT_ERROR = None
 
+try:
+    from cv_bridge import CvBridge
+except ImportError:
+    CvBridge = None
 
 GOAL_COMMAND_TOPIC = "/legged_deployment/foresight_planner/goal_command"
 FORESIGHT_STATUS_TOPIC = "/legged_deployment/foresight_status"
@@ -205,6 +211,8 @@ def encode_compressed_image(msg):
 
 
 def encode_image_message(bridge, msg):
+    if bridge is None or cv2 is None:
+        return None
     try:
         cv_image = bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
         ok, encoded = cv2.imencode(".jpg", cv_image)
@@ -319,7 +327,7 @@ def normalize_foresight_block(msg, topic, timestamp):
 class ReplayDashboardNode(Node):
     def __init__(self):
         super().__init__("ros_replay_dashboard")
-        self.bridge = CvBridge()
+        self.bridge = CvBridge() if CvBridge is not None else None
 
         self.create_subscription(String, GOAL_COMMAND_TOPIC, self.on_goal_command, 10)
         self.create_subscription(ForesightPlannerMsg, FORESIGHT_STATUS_TOPIC, self.on_foresight_status, 10)

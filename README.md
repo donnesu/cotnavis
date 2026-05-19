@@ -1,86 +1,71 @@
-# ROS2 Replay Dashboard
+# COTNAVIS ROS2 Bag Replay (Docker Workflow)
 
-Local Flask + ROS2 replay visualization dashboard for ROS2 bag output.
+This repo includes a ROS2 workspace at `ros2_ws` with:
 
-## Install dependencies
+- `cotnavis_replay`
+- `amrl_msgs` (from `ut-amrl/amrl_msgs`, branch `artzha/foresight`)
+
+## 1) Enter ROS2 Docker shell
+
+From host (`robovision`):
 
 ```bash
-cd ros_replay_dashboard
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+cd /home/ecocar_robot/PA/Donne/cotnavis
+./ros2_ws/docker_shell.sh
 ```
 
-`cv_bridge`, `rclpy`, `sensor_msgs`, and `std_msgs` usually come from ROS packages instead of pip:
+Default dataset host path mounted into container:
+
+- Host: `/robodata/spot_logs/arthurz/foresight_bags/experiment_logs`
+- Container: `/datasets`
+
+## 2) Replay + UI in one command (inside container)
 
 ```bash
-sudo apt install ros-${ROS_DISTRO}-cv-bridge
+./ros2_ws/replay.sh /datasets/mission_20260516_004716
 ```
 
-## Source ROS2
+What this does:
 
-Source your ROS2 environment before running the dashboard:
+- auto-installs Python runtime deps if missing (`pip`, `flask`, `flask-socketio`, `opencv-python`)
+- builds `amrl_msgs` + `cotnavis_replay`
+- starts Flask UI (`app.py`) on port `5000`
+- replays the bag with `ros2 bag play --clock`
+
+Advanced args:
 
 ```bash
+./ros2_ws/run_cotnavis_replay.sh <bag_path> [loop] [rate] [start_offset] [ros_domain_id]
+```
+
+## 3) Optional manual split (inside container)
+
+Terminal A:
+
+```bash
+cd /home/ecocar_robot/PA/Donne/cotnavis/ros2_ws
 source /opt/ros/${ROS_DISTRO}/setup.bash
-```
-
-If you use a workspace overlay, source it after ROS2:
-
-```bash
-source ~/ros2_ws/install/setup.bash
-```
-
-## Run the Flask app
-
-```bash
-python app.py
-```
-
-If your system only exposes Python 3 as `python3`, use:
-
-```bash
+colcon build --symlink-install --packages-up-to amrl_msgs cotnavis_replay
+source install/setup.bash
+cd /home/ecocar_robot/PA/Donne/cotnavis
 python3 app.py
 ```
 
-Open:
-
-```text
-http://localhost:5000
-```
-
-The page loads even if no ROS messages have arrived.
-
-## Play the mission bag
-
-In another terminal with ROS2 and your AMRL workspace sourced:
+Terminal B:
 
 ```bash
-ros2 bag play /bags/mission_20260515_152755 --clock
+cd /home/ecocar_robot/PA/Donne/cotnavis/ros2_ws
+source /opt/ros/${ROS_DISTRO}/setup.bash
+source install/setup.bash
+ros2 bag play /datasets/mission_20260516_004716 --clock
 ```
 
-The dashboard is a live subscriber view. It does not read bag files directly; keep the
-Flask app running while `ros2 bag play` publishes the recorded topics.
+## 4) View from local machine
 
-## Expected topics
+On your laptop:
 
-Primary research/reasoning streams:
+```bash
+./scripts/port_forward_cotnavis.sh robovision <robovision_user> auto 5000
+```
 
-- `/legged_deployment/foresight_planner/goal_command`: `std_msgs/msg/String`
-- `/legged_deployment/foresight_status`: `amrl_msgs/msg/ForesightPlannerMsg`
-- `/graph_navigation/foresight_status`: `amrl_msgs/msg/ForesightPlannerMsg`
-- `/legged_deployment/image_plan/compressed`: `sensor_msgs/msg/CompressedImage`
-- `/legged_deployment/observation_mosaic/compressed`: `sensor_msgs/msg/CompressedImage`
-- `/camera/rgb/image_raw/compressed`: `sensor_msgs/msg/CompressedImage`
-
-Execution/context streams:
-
-- `/autonomy_arbiter/enabled`: `std_msgs/msg/Bool`
-- `/cmd_vel`: `geometry_msgs/msg/Twist`
-- `/navigation/cmd_vel`: `geometry_msgs/msg/Twist`
-- `/joystick`: `sensor_msgs/msg/Joy`
-- `/trajectory`: `nav_msgs/msg/Path`
-- `/navigation/path_rollouts`: `visualization_msgs/msg/MarkerArray`
-
-The main planner queue is driven by `/legged_deployment/foresight_status`. Graph
-navigation foresight is summarized as secondary context.
+Then open the local URL printed by the script (for example `http://127.0.0.1:5000` or `:5001`).
