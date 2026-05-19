@@ -119,8 +119,6 @@ body {
 
 .observation-card {
   display: grid;
-  grid-template-columns: 128px minmax(0, 1fr);
-  gap: 18px;
   min-width: 0;
   min-height: 86px;
   border: 1px solid var(--border-strong);
@@ -130,8 +128,6 @@ body {
 }
 
 .observation-image-frame {
-  width: 128px;
-  height: 62px;
   overflow: hidden;
   border: 1px solid var(--image-border);
   border-radius: 6px;
@@ -192,7 +188,7 @@ body {
 
 .queue-column,
 .current-camera-frame {
-  min-height: 392px;
+  min-height: 311.25px;
   border: 1px solid var(--border-strong);
   border-radius: 10px;
   background: var(--panel-alt);
@@ -451,7 +447,7 @@ body {
 .live-pill {
   width: 92px;
   height: 26px;
-  margin-top: 22px;
+  margin-bottom: 22px;
   border: 1px solid var(--executing-border);
   border-radius: 13px;
   background: var(--executing-bg);

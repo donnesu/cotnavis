@@ -83,10 +83,10 @@ function renderObservationTimeline(history) {
     indexLabel.className = "frame-index";
     indexLabel.textContent = frame.label || (index === history.length - 1 ? "current" : `image ${index + 1}`);
 
-    meta.appendChild(label);
-    meta.appendChild(indexLabel);
+    // meta.appendChild(label);
+    // meta.appendChild(indexLabel);
     card.appendChild(imageFrame);
-    card.appendChild(meta);
+    // card.appendChild(meta);
     observationTimeline.appendChild(card);
   });
 }
