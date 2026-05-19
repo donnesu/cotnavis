@@ -6,6 +6,8 @@ const plannerQueue = document.getElementById("planner-queue");
 const currentCamera = document.getElementById("current-camera");
 const currentCameraPlaceholder = document.getElementById("current-camera-placeholder");
 const livePill = document.getElementById("live-pill");
+const observationMosaicTilesCache = new Map();
+let observationRenderVersion = 0;
 
 function clearElement(element) {
   while (element.firstChild) {
@@ -50,16 +52,128 @@ function formatBool(value) {
   return "unknown";
 }
 
-function renderObservationTimeline(history) {
+function isObservationMosaicFrame(frame) {
+  if (!frame) {
+    return false;
+  }
+
+  const label = (frame.label || "").toLowerCase();
+  const topic = (frame.topic || "").toLowerCase();
+  return label.includes("mosaic") || topic.includes("observation_mosaic");
+}
+
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("Failed to load observation mosaic image"));
+    image.src = src;
+  });
+}
+
+async function splitMosaicIntoTiles(imageSrc, rows = 2, cols = 2) {
+  if (!imageSrc) {
+    return [];
+  }
+
+  if (observationMosaicTilesCache.has(imageSrc)) {
+    return observationMosaicTilesCache.get(imageSrc);
+  }
+
+  const image = await loadImage(imageSrc);
+  if (image.naturalWidth < cols || image.naturalHeight < rows) {
+    observationMosaicTilesCache.set(imageSrc, [imageSrc]);
+    return [imageSrc];
+  }
+
+  const tileWidth = Math.floor(image.naturalWidth / cols);
+  const tileHeight = Math.floor(image.naturalHeight / rows);
+  const tiles = [];
+
+  if (tileWidth <= 0 || tileHeight <= 0) {
+    observationMosaicTilesCache.set(imageSrc, [imageSrc]);
+    return [imageSrc];
+  }
+
+  for (let row = 0; row < rows; row += 1) {
+    for (let col = 0; col < cols; col += 1) {
+      const sx = col * tileWidth;
+      const sy = row * tileHeight;
+      const sw = col === cols - 1 ? image.naturalWidth - sx : tileWidth;
+      const sh = row === rows - 1 ? image.naturalHeight - sy : tileHeight;
+
+      const canvas = document.createElement("canvas");
+      canvas.width = sw;
+      canvas.height = sh;
+
+      const context = canvas.getContext("2d");
+      if (!context) {
+        continue;
+      }
+
+      context.drawImage(image, sx, sy, sw, sh, 0, 0, sw, sh);
+      tiles.push(canvas.toDataURL("image/jpeg", 0.92));
+    }
+  }
+
+  const result = tiles.length > 0 ? tiles : [imageSrc];
+  observationMosaicTilesCache.set(imageSrc, result);
+  return result;
+}
+
+async function expandObservationFrames(history) {
+  const expandedFrames = [];
+
+  for (const frame of history || []) {
+    if (!frame?.image) {
+      continue;
+    }
+
+    if (!isObservationMosaicFrame(frame)) {
+      expandedFrames.push(frame);
+      continue;
+    }
+
+    try {
+      const tiles = await splitMosaicIntoTiles(frame.image, 2, 2);
+      tiles.forEach((tileImage, tileIndex) => {
+        expandedFrames.push({
+          ...frame,
+          image: tileImage,
+          label: `${frame.label || "observation"} tile ${tileIndex + 1}`,
+        });
+      });
+    } catch (error) {
+      expandedFrames.push(frame);
+    }
+  }
+
+  return expandedFrames;
+}
+
+async function renderObservationTimeline(history) {
+  const renderVersion = observationRenderVersion + 1;
+  observationRenderVersion = renderVersion;
+
   if (!history || history.length === 0) {
-    renderPlaceholder(observationTimeline, "No camera frames received");
+    renderPlaceholder(observationTimeline, "No observation mosaics received");
+    return;
+  }
+
+  const frames = await expandObservationFrames(history);
+  if (renderVersion !== observationRenderVersion) {
+    return;
+  }
+
+  if (frames.length === 0) {
+    renderPlaceholder(observationTimeline, "No observation mosaics received");
     return;
   }
 
   observationTimeline.classList.remove("empty-state");
   clearElement(observationTimeline);
 
-  history.forEach((frame, index) => {
+  frames.forEach((frame, index) => {
     const card = document.createElement("article");
     card.className = "observation-card";
 
@@ -77,11 +191,11 @@ function renderObservationTimeline(history) {
 
     const label = document.createElement("div");
     label.className = "frame-label";
-    label.textContent = index === history.length - 1 ? "t0" : `t-${history.length - index - 1}`;
+    label.textContent = index === frames.length - 1 ? "t0" : `t-${frames.length - index - 1}`;
 
     const indexLabel = document.createElement("div");
     indexLabel.className = "frame-index";
-    indexLabel.textContent = frame.label || (index === history.length - 1 ? "current" : `image ${index + 1}`);
+    indexLabel.textContent = frame.label || (index === frames.length - 1 ? "current" : `image ${index + 1}`);
 
     // meta.appendChild(label);
     // meta.appendChild(indexLabel);
@@ -217,7 +331,7 @@ socket.on("camera_update", (payload) => {
     currentCameraPlaceholder.classList.remove("is-hidden");
   }
 
-  renderObservationTimeline(payload.history || []);
+  void renderObservationTimeline(payload.history || []);
 });
 
 socket.on("foresight_trace", (payload) => {

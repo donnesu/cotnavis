@@ -226,7 +226,7 @@ def encode_image_message(bridge, msg):
         return None
 
 
-def append_camera_image(image_url, topic, label, timestamp):
+def set_current_camera_image(image_url, topic, label, timestamp):
     if image_url is None:
         return None, []
 
@@ -238,8 +238,27 @@ def append_camera_image(image_url, topic, label, timestamp):
     }
     with state_lock:
         state["current_camera"] = frame
-        state["camera_history"].append(frame)
         current = dict(state["current_camera"])
+        history = list(state["camera_history"])
+
+    return current, history
+
+
+def append_observation_history(image_url, topic, label, timestamp):
+    if image_url is None:
+        return None, []
+
+    frame = {
+        "image": image_url,
+        "topic": topic,
+        "label": label,
+        "received_at": timestamp,
+    }
+    with state_lock:
+        state["latest_observation_mosaic"] = frame
+        state["camera_history"].clear()
+        state["camera_history"].append(frame)
+        current = dict(state["current_camera"]) if state["current_camera"] else None
         history = list(state["camera_history"])
 
     return current, history
@@ -354,7 +373,7 @@ class ReplayDashboardNode(Node):
 
     def on_camera_compressed(self, msg):
         timestamp = received_at()
-        current, history = append_camera_image(
+        current, history = set_current_camera_image(
             encode_compressed_image(msg),
             CAMERA_TOPIC,
             "rgb camera",
@@ -365,7 +384,7 @@ class ReplayDashboardNode(Node):
 
     def on_camera_image(self, msg):
         timestamp = received_at()
-        current, history = append_camera_image(
+        current, history = set_current_camera_image(
             encode_image_message(self.bridge, msg),
             CAMERA_TOPIC,
             "rgb camera",
@@ -376,29 +395,13 @@ class ReplayDashboardNode(Node):
 
     def on_observation_mosaic(self, msg):
         timestamp = received_at()
-        image_url = encode_compressed_image(msg)
-        if image_url is None:
-            return
-
-        frame = {
-            "image": image_url,
-            "topic": OBSERVATION_MOSAIC_TOPIC,
-            "label": "observation mosaic",
-            "received_at": timestamp,
-        }
-        with state_lock:
-            state["latest_observation_mosaic"] = frame
-            should_use_as_fallback = state["current_camera"] is None
-            if should_use_as_fallback:
-                state["current_camera"] = frame
-                state["camera_history"].append(frame)
-                current = dict(state["current_camera"])
-                history = list(state["camera_history"])
-            else:
-                current = None
-                history = None
-
-        if current:
+        current, history = append_observation_history(
+            encode_compressed_image(msg),
+            OBSERVATION_MOSAIC_TOPIC,
+            "observation mosaic",
+            timestamp,
+        )
+        if history:
             socketio.emit("camera_update", {"current": current, "history": history})
 
     def on_image_plan(self, msg):

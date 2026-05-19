@@ -92,7 +92,6 @@ body {
 
 .command-text {
   margin-top: 8px;
-  max-width: 900px;
   color: var(--text);
   font-size: 23px;
   font-weight: 650;
