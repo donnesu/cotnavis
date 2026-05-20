@@ -101,6 +101,41 @@ clear_stale_package_build() {
   fi
 }
 
+free_port_5000() {
+  local pids=()
+
+  if command -v lsof >/dev/null 2>&1; then
+    mapfile -t pids < <(lsof -ti tcp:5000 || true)
+  elif command -v fuser >/dev/null 2>&1; then
+    mapfile -t pids < <(fuser -n tcp 5000 2>/dev/null | tr ' ' '\n' || true)
+  elif command -v ss >/dev/null 2>&1; then
+    mapfile -t pids < <(ss -lptn 'sport = :5000' 2>/dev/null | sed -n 's/.*pid=\([0-9]\+\).*/\1/p' || true)
+  fi
+
+  if [[ ${#pids[@]} -eq 0 ]]; then
+    return
+  fi
+
+  echo "[replay] Stopping process(es) already using port 5000: ${pids[*]}"
+  kill "${pids[@]}" 2>/dev/null || true
+  sleep 1
+
+  local remaining=()
+  if command -v lsof >/dev/null 2>&1; then
+    mapfile -t remaining < <(lsof -ti tcp:5000 || true)
+  elif command -v fuser >/dev/null 2>&1; then
+    mapfile -t remaining < <(fuser -n tcp 5000 2>/dev/null | tr ' ' '\n' || true)
+  elif command -v ss >/dev/null 2>&1; then
+    mapfile -t remaining < <(ss -lptn 'sport = :5000' 2>/dev/null | sed -n 's/.*pid=\([0-9]\+\).*/\1/p' || true)
+  fi
+
+  if [[ ${#remaining[@]} -gt 0 ]]; then
+    echo "[replay] ERROR: port 5000 still in use by PID(s): ${remaining[*]}"
+    echo "[replay] Re-run with sufficient permissions or stop those processes manually."
+    exit 1
+  fi
+}
+
 echo "[replay] Sourcing ROS: /opt/ros/${ROS_DISTRO_VALUE}/setup.bash"
 source_with_relaxed_nounset "/opt/ros/${ROS_DISTRO_VALUE}/setup.bash"
 ensure_python_deps
@@ -126,6 +161,7 @@ if ! ros2 interface show amrl_msgs/msg/ForesightPlannerMsg >/dev/null 2>&1; then
 fi
 
 cd "${REPO_ROOT}"
+free_port_5000
 echo "[replay] Starting Flask UI on port 5000..."
 python3 app.py &
 APP_PID=$!

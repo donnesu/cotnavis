@@ -9,6 +9,18 @@ const livePill = document.getElementById("live-pill");
 const observationMosaicTilesCache = new Map();
 const plannerArtifactLeftCropCache = new Map();
 let observationRenderVersion = 0;
+let latestForesightQueue = [];
+let transientIndicator = null;
+let lastGoalText = "";
+let plannerQueueRenderVersion = 0;
+let transientIndicatorCounter = 0;
+const revealedPlannerBlockKeys = new Set();
+const delayedRevealMsByType = {
+  planning: 160,
+  replanning: 200,
+  executing: 240,
+  fix: 320,
+};
 
 function clearElement(element) {
   while (element.firstChild) {
@@ -242,6 +254,15 @@ async function renderObservationTimeline(history) {
 }
 
 function blockTitle(block) {
+  if (block.type === "planning") {
+    return "PLANNING";
+  }
+  if (block.type === "replanning") {
+    return "REPLANNING";
+  }
+  if (block.type === "executing") {
+    return "EXECUTING";
+  }
   if (block.type === "accepted") {
     return "ACCEPTED";
   }
@@ -287,6 +308,31 @@ function shouldUseImageOnlyBody(block) {
   return block.type === "accepted" || block.type === "rejected";
 }
 
+function plannerBlockKey(block) {
+  const payload = [
+    block.type || "unknown",
+    block.status || "UNKNOWN",
+    block.reflection_id === null || block.reflection_id === undefined ? "n/a" : String(block.reflection_id),
+    block.display_text || "",
+    block.reason || "",
+    block.thinking_text || "",
+    block.motion_text || "",
+    block.critic_text || "",
+    block.path_pose_count === null || block.path_pose_count === undefined ? "" : String(block.path_pose_count),
+    block._transient_id || "",
+  ];
+  return payload.join("|");
+}
+
+function delayedRevealMs(block) {
+  const type = (block.type || "").toLowerCase();
+  return delayedRevealMsByType[type] || 0;
+}
+
+function shouldDelayReveal(block) {
+  return delayedRevealMs(block) > 0;
+}
+
 function renderImageArtifact(block, body, isImageOnlyCard) {
   const artifact = block.motion_image || block.image_plan?.image;
   if (!artifact) {
@@ -317,6 +363,9 @@ function renderPlannerQueue(queue) {
     return;
   }
 
+  plannerQueueRenderVersion += 1;
+  const renderVersion = plannerQueueRenderVersion;
+
   plannerQueue.classList.remove("empty-state");
   clearElement(plannerQueue);
 
@@ -324,6 +373,9 @@ function renderPlannerQueue(queue) {
     const connector = document.createElement("div");
     const item = document.createElement("article");
     item.className = `queue-block queue-block-${block.type || "unknown"}`;
+    if (block.is_transient) {
+      item.classList.add("queue-block-transient");
+    }
 
     const title = document.createElement("div");
     title.className = "queue-title";
@@ -341,7 +393,7 @@ function renderPlannerQueue(queue) {
       body.classList.add("queue-body-image-only");
     }
 
-    if (blockTitle(block) != "FIX") {
+    if (!block.is_transient && blockTitle(block) !== "FIX") {
       renderImageArtifact(block, body, isImageOnlyCard);
     }
 
@@ -357,12 +409,68 @@ function renderPlannerQueue(queue) {
     item.appendChild(status);
     item.appendChild(body);
 
+    const blockKey = plannerBlockKey(block);
+    if (shouldDelayReveal(block) && !revealedPlannerBlockKeys.has(blockKey)) {
+      const revealDelayMs = delayedRevealMs(block);
+      item.classList.add("queue-block-delayed", "queue-block-hidden");
+      window.setTimeout(() => {
+        if (renderVersion !== plannerQueueRenderVersion || !item.isConnected) {
+          return;
+        }
+        item.classList.remove("queue-block-hidden");
+        item.classList.add("queue-block-visible");
+      }, revealDelayMs);
+      revealedPlannerBlockKeys.add(blockKey);
+      if (revealedPlannerBlockKeys.size > 600) {
+        revealedPlannerBlockKeys.clear();
+      }
+    }
+
     if (plannerQueue.children.length > 0) {
       connector.className = "queue-connector";
       plannerQueue.appendChild(connector);
     }
     plannerQueue.appendChild(item);
   });
+}
+
+function normalizeGoalText(value) {
+  return (value || "").trim();
+}
+
+function createTransientIndicator(type) {
+  const indicatorText = {
+    planning: "Planner is building a path from the latest command.",
+    replanning: "Planner is updating the path after a rejection.",
+    executing: "Accepted path is being executed.",
+  };
+
+  return {
+    type,
+    status: type.toUpperCase(),
+    display_text: indicatorText[type] || "Planner state update.",
+    reflection_id: null,
+    is_transient: true,
+    _transient_id: `${type}-${Date.now()}-${transientIndicatorCounter += 1}`,
+  };
+}
+
+function deriveTransientIndicator(queue) {
+  for (let index = queue.length - 1; index >= 0; index -= 1) {
+    const status = (queue[index]?.status || "").toUpperCase();
+    if (status === "REJECTED") {
+      return createTransientIndicator("replanning");
+    }
+    if (status === "ACCEPTED") {
+      return createTransientIndicator("executing");
+    }
+  }
+  return null;
+}
+
+function renderPlannerQueueWithTransient() {
+  const mergedQueue = transientIndicator ? [...latestForesightQueue, transientIndicator] : [...latestForesightQueue];
+  renderPlannerQueue(mergedQueue);
 }
 
 function renderRunContext(context) {
@@ -387,7 +495,15 @@ function renderRunContext(context) {
 }
 
 socket.on("goal_command", (payload) => {
-  languageCommand.textContent = payload?.text || "Awaiting command";
+  const nextGoalText = normalizeGoalText(payload?.text);
+  languageCommand.textContent = nextGoalText || "Awaiting command";
+
+  if (nextGoalText && nextGoalText !== lastGoalText) {
+    transientIndicator = createTransientIndicator("planning");
+    renderPlannerQueueWithTransient();
+  }
+
+  lastGoalText = nextGoalText;
 });
 
 socket.on("camera_update", (payload) => {
@@ -405,7 +521,10 @@ socket.on("camera_update", (payload) => {
 });
 
 socket.on("foresight_trace", (payload) => {
-  renderPlannerQueue(payload.queue || []);
+  transientIndicator = null;
+  latestForesightQueue = Array.isArray(payload?.queue) ? payload.queue : [];
+  transientIndicator = deriveTransientIndicator(latestForesightQueue);
+  renderPlannerQueueWithTransient();
 });
 
 socket.on("run_context", (payload) => {
