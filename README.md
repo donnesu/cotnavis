@@ -38,6 +38,18 @@ Advanced args:
 ./ros2_ws/run_cotnavis_replay.sh <bag_path> [loop] [rate] [start_offset] [ros_domain_id]
 ```
 
+### Ignore specific foresight messages by receive order
+
+Edit `cotnavis_config.json` at the repo root.
+
+```json
+{
+  "ignore_foresight_message_indices": "1,2,6"
+}
+```
+
+This skips the 1st, 2nd, and 6th message received on `/legged_deployment/foresight_status` after `app.py` starts.
+
 ## 3) Optional manual split (inside container)
 
 Terminal A:

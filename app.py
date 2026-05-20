@@ -1,4 +1,6 @@
 import base64
+import json
+import os
 import re
 import threading
 import time
@@ -57,6 +59,7 @@ TRAJECTORY_TOPIC = "/trajectory"
 PATH_ROLLOUTS_TOPIC = "/navigation/path_rollouts"
 
 COMMAND_MATCH_THRESHOLD = 0.05
+LOCAL_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "cotnavis_config.json")
 
 
 app = Flask(__name__)
@@ -74,6 +77,7 @@ state = {
     },
     "camera_history": deque(maxlen=4),
     "current_camera": None,
+    "foresight_message_count": 0,
     "foresight_queue": [],
     "latest_image_plan": None,
     "latest_observation_mosaic": None,
@@ -138,6 +142,66 @@ state = {
 
 def received_at():
     return datetime.now(timezone.utc).isoformat()
+
+
+def parse_ignore_indices(raw_value):
+    if raw_value is None:
+        return set()
+
+    if isinstance(raw_value, str):
+        tokens = raw_value.split(",")
+    elif isinstance(raw_value, (list, tuple, set)):
+        tokens = list(raw_value)
+    else:
+        raise ValueError("ignore_foresight_message_indices must be a comma string or a list")
+
+    indices = set()
+    for token in tokens:
+        if isinstance(token, int):
+            index = token
+        else:
+            token_text = str(token).strip()
+            if not token_text:
+                continue
+            if not token_text.isdigit():
+                raise ValueError(f"invalid index value: {token!r}")
+            index = int(token_text)
+        if index < 1:
+            raise ValueError(f"index must be >= 1, got {index}")
+        indices.add(index)
+    return indices
+
+
+def load_ignored_foresight_indices():
+    if not os.path.exists(LOCAL_CONFIG_PATH):
+        return set()
+
+    try:
+        with open(LOCAL_CONFIG_PATH, "r", encoding="utf-8") as config_file:
+            loaded = json.load(config_file)
+    except Exception:
+        app.logger.exception("Failed to load local config at %s", LOCAL_CONFIG_PATH)
+        return set()
+
+    if not isinstance(loaded, dict):
+        app.logger.warning("Config file %s must contain a JSON object", LOCAL_CONFIG_PATH)
+        return set()
+
+    try:
+        ignored = parse_ignore_indices(loaded.get("ignore_foresight_message_indices"))
+    except ValueError as exc:
+        app.logger.warning("Invalid ignore config in %s: %s", LOCAL_CONFIG_PATH, exc)
+        return set()
+
+    if ignored:
+        app.logger.info(
+            "Ignoring foresight messages by index: %s",
+            ", ".join(str(value) for value in sorted(ignored)),
+        )
+    return ignored
+
+
+IGNORED_FORESIGHT_MESSAGE_INDICES = load_ignored_foresight_indices()
 
 
 def snapshot_state():
@@ -479,6 +543,14 @@ class ReplayDashboardNode(Node):
             }
 
     def on_foresight_status(self, msg):
+        with state_lock:
+            state["foresight_message_count"] += 1
+            message_index = state["foresight_message_count"]
+
+        if message_index in IGNORED_FORESIGHT_MESSAGE_INDICES:
+            app.logger.info("Ignoring foresight message #%d from %s", message_index, FORESIGHT_STATUS_TOPIC)
+            return
+
         blocks = normalize_foresight_blocks(msg, FORESIGHT_STATUS_TOPIC, received_at())
         with state_lock:
             accepted_seen = any(block.get("status") == "ACCEPTED" for block in state["foresight_queue"])
