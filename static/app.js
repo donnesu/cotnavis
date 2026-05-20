@@ -19,8 +19,10 @@ const delayedRevealMsByType = {
   planning: 160,
   replanning: 200,
   executing: 240,
-  fix: 320,
+  fix: 120,
 };
+const EXECUTING_TIMEOUT_MS = 15 * 1000;
+let executingTimeoutHandle = null;
 
 function clearElement(element) {
   while (element.firstChild) {
@@ -308,6 +310,11 @@ function shouldUseImageOnlyBody(block) {
   return block.type === "accepted" || block.type === "rejected";
 }
 
+function isSimpleProgressCard(block) {
+  const type = (block?.type || "").toLowerCase();
+  return type === "planning" || type === "replanning" || type === "executing";
+}
+
 function plannerBlockKey(block) {
   const payload = [
     block.type || "unknown",
@@ -331,6 +338,36 @@ function delayedRevealMs(block) {
 
 function shouldDelayReveal(block) {
   return delayedRevealMs(block) > 0;
+}
+
+function clearExecutingTimeout() {
+  if (executingTimeoutHandle === null) {
+    return;
+  }
+  window.clearTimeout(executingTimeoutHandle);
+  executingTimeoutHandle = null;
+}
+
+function syncExecutingTimeout() {
+  clearExecutingTimeout();
+  if (!transientIndicator || transientIndicator.type !== "executing") {
+    return;
+  }
+
+  const executingTransientId = transientIndicator._transient_id || "";
+  executingTimeoutHandle = window.setTimeout(() => {
+    if (!transientIndicator || transientIndicator.type !== "executing") {
+      return;
+    }
+    if ((transientIndicator._transient_id || "") !== executingTransientId) {
+      return;
+    }
+
+    latestForesightQueue = [];
+    transientIndicator = createTransientIndicator("planning");
+    renderPlannerQueueWithTransient();
+    executingTimeoutHandle = null;
+  }, EXECUTING_TIMEOUT_MS);
 }
 
 function renderImageArtifact(block, body, isImageOnlyCard) {
@@ -381,10 +418,12 @@ function renderPlannerQueue(queue) {
     title.className = "queue-title";
     title.textContent = blockTitle(block);
 
+    const isSimpleCard = isSimpleProgressCard(block);
+
     const status = document.createElement("div");
     status.className = "queue-status";
     const reflection = block.reflection_id === null || block.reflection_id === undefined ? "n/a" : block.reflection_id;
-    status.textContent = `reflection ${reflection} / ${block.status || "UNKNOWN"}`;
+    status.textContent = `reflection ${reflection}`;
 
     const body = document.createElement("div");
     body.className = "queue-body";
@@ -393,11 +432,11 @@ function renderPlannerQueue(queue) {
       body.classList.add("queue-body-image-only");
     }
 
-    if (!block.is_transient && blockTitle(block) !== "FIX") {
+    if (!isSimpleCard && !block.is_transient && blockTitle(block) !== "FIX") {
       renderImageArtifact(block, body, isImageOnlyCard);
     }
 
-    const bodyText = blockBodyText(block);
+    const bodyText = isSimpleCard ? "..." : blockBodyText(block);
 
     if (!isImageOnlyCard) {
       const text = document.createElement("p");
@@ -406,7 +445,9 @@ function renderPlannerQueue(queue) {
     }
 
     item.appendChild(title);
-    item.appendChild(status);
+    if (!isSimpleCard) {
+      item.appendChild(status);
+    }
     item.appendChild(body);
 
     const blockKey = plannerBlockKey(block);
@@ -471,6 +512,7 @@ function deriveTransientIndicator(queue) {
 function renderPlannerQueueWithTransient() {
   const mergedQueue = transientIndicator ? [...latestForesightQueue, transientIndicator] : [...latestForesightQueue];
   renderPlannerQueue(mergedQueue);
+  syncExecutingTimeout();
 }
 
 function renderRunContext(context) {

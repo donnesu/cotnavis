@@ -649,6 +649,8 @@ body {
 
 .queue-block-transient {
   position: relative;
+  flex: 0 0 160px;
+  width: 160px;
   animation: transient-pulse 1.8s ease-in-out infinite;
 }
 
