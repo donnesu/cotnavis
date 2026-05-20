@@ -1,10 +1,5 @@
 # COTNAVIS ROS2 Bag Replay (Docker Workflow)
 
-This repo includes a ROS2 workspace at `ros2_ws` with:
-
-- `cotnavis_replay`
-- `amrl_msgs` (from `ut-amrl/amrl_msgs`, branch `artzha/foresight`)
-
 ## 1) Enter ROS2 Docker shell
 
 From host (`robovision`):
@@ -23,6 +18,13 @@ Default dataset host path mounted into container:
 
 ```bash
 ./ros2_ws/replay.sh /datasets/mission_20260516_004716
+```
+
+To replay another bag, may run into port conflict issues:
+
+```bash
+lsof -i :5000
+kill -9 <PID>
 ```
 
 What this does:
@@ -75,6 +77,11 @@ ros2 bag play /datasets/mission_20260516_004716 --clock
 ## 4) View from local machine
 
 On your laptop:
+
+```bash
+ssh -L 5000:localhost:5000 ecocar_robot@robovision.csres.utexas.edu
+```
+or
 
 ```bash
 ./scripts/port_forward_cotnavis.sh robovision <robovision_user> auto 5000
