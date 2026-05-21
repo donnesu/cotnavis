@@ -8,10 +8,6 @@
   </head>
   <body>
     <main class="dashboard-shell">
-      <header class="page-header">
-        <h1>ROS2 Bag Replay Planner Visualization</h1>
-      </header>
-
       <header class="command-panel">
         <div class="section-label">Language Command</div>
         <div id="language-command" class="command-text">Awaiting command</div>
@@ -31,22 +27,17 @@
         </div>
 
         <div class="planner-layout">
-          <div class="queue-column">
-            <div class="queue-heading">Legged Deployment Reflection Queue</div>
-            <div id="planner-queue" class="planner-queue empty-state">
-              <div class="placeholder">No planner events received</div>
-            </div>
+          <div id="planner-queue" class="planner-queue empty-state">
+            <div class="placeholder">No planner events received</div>
           </div>
 
-          <div class="camera-column">
-            <div class="current-camera-frame">
-              <div id="live-pill" class="live-pill">Waiting</div>
-              <div class="current-camera-image">
-                <img id="current-camera" alt="Current observation camera feed">
-                <div id="current-camera-placeholder" class="placeholder">current camera frame</div>
-              </div>
+          <aside class="camera-column" aria-label="Current observation camera frame">
+            <div id="live-pill" class="live-pill">Waiting</div>
+            <div class="current-camera-image">
+              <img id="current-camera" alt="Current observation camera feed">
+              <div id="current-camera-placeholder" class="placeholder">current camera frame</div>
             </div>
-          </div>
+          </aside>
         </div>
       </section>
     </main>

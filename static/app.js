@@ -235,22 +235,7 @@ async function renderObservationTimeline(history) {
     image.alt = `${frame.label || "Observation"} frame ${index + 1}`;
 
     imageFrame.appendChild(image);
-
-    const meta = document.createElement("div");
-    meta.className = "observation-meta";
-
-    const label = document.createElement("div");
-    label.className = "frame-label";
-    label.textContent = index === frames.length - 1 ? "t0" : `t-${frames.length - index - 1}`;
-
-    const indexLabel = document.createElement("div");
-    indexLabel.className = "frame-index";
-    indexLabel.textContent = frame.label || (index === frames.length - 1 ? "current" : `image ${index + 1}`);
-
-    // meta.appendChild(label);
-    // meta.appendChild(indexLabel);
     card.appendChild(imageFrame);
-    // card.appendChild(meta);
     observationTimeline.appendChild(card);
   });
 }
