@@ -23,7 +23,10 @@
       <section class="panel planner-panel" aria-label="Planner trace">
         <div class="planner-label-row">
           <div class="section-label">Foresight Planner Trace</div>
-          <div class="section-label current-observation-label">Current Observation</div>
+          <div class="planner-label-right">
+            <div id="live-pill" class="live-pill">Waiting</div>
+            <div class="section-label current-observation-label">Current Observation</div>
+          </div>
         </div>
 
         <div class="planner-layout">
@@ -32,7 +35,6 @@
           </div>
 
           <aside class="camera-column" aria-label="Current observation camera frame">
-            <div id="live-pill" class="live-pill">Waiting</div>
             <div class="current-camera-image">
               <img id="current-camera" alt="Current observation camera feed">
               <div id="current-camera-placeholder" class="placeholder">current camera frame</div>

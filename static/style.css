@@ -112,7 +112,14 @@ body {
 .planner-label-row {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: center;
+  gap: 8px;
+}
+
+.planner-label-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
   gap: 8px;
 }
 
@@ -269,17 +276,16 @@ body {
 }
 
 .camera-column {
-  position: relative;
   border-radius: 8px;
 }
 
 .live-pill {
-  position: absolute;
-  left: 16px;
-  top: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 96px;
   height: 28px;
-  z-index: 2;
+  flex: 0 0 auto;
   border: 1px solid var(--executing-border);
   border-radius: 14px;
   background: rgba(234, 244, 236, 0.92);
@@ -468,11 +474,6 @@ body {
 
   .camera-column {
     padding: 6px;
-  }
-
-  .live-pill {
-    left: 12px;
-    top: 12px;
   }
 
   .current-camera-image {
