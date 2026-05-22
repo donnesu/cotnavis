@@ -236,7 +236,7 @@ body {
   flex: 1;
   min-height: 0;
   margin-top: 6px;
-  font-size: clamp(28px, 6.2vw, 38px);
+  font-size: clamp(28px, 4.2vw, 32px);
   line-height: 1.2;
   white-space: pre-line;
   overflow: auto;
@@ -461,7 +461,7 @@ body {
   }
 
   .queue-body {
-    font-size: clamp(30px, 8.2vw, 40px);
+    font-size: clamp(28px, 4.2vw, 36px);
   }
 
   .planned-path-image {

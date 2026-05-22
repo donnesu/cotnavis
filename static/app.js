@@ -14,6 +14,7 @@ let transientIndicator = null;
 let lastGoalText = "";
 let plannerQueueRenderVersion = 0;
 let transientIndicatorCounter = 0;
+let foresightMessageReceiveCount = 0;
 const revealedPlannerBlockKeys = new Set();
 const delayedRevealMsByType = {
   planning: 160,
@@ -23,6 +24,10 @@ const delayedRevealMsByType = {
 };
 const EXECUTING_TIMEOUT_MS = 15 * 1000;
 let executingTimeoutHandle = null;
+
+function scrollPlannerQueueToLatest() {
+  plannerQueue.scrollLeft = plannerQueue.scrollWidth;
+}
 
 function clearElement(element) {
   while (element.firstChild) {
@@ -382,6 +387,7 @@ function renderImageArtifact(block, body, isImageOnlyCard) {
 function renderPlannerQueue(queue) {
   if (!queue || queue.length === 0) {
     renderPlaceholder(plannerQueue, "No foresight events received");
+    scrollPlannerQueueToLatest();
     return;
   }
 
@@ -445,6 +451,7 @@ function renderPlannerQueue(queue) {
         }
         item.classList.remove("queue-block-hidden");
         item.classList.add("queue-block-visible");
+        scrollPlannerQueueToLatest();
       }, revealDelayMs);
       revealedPlannerBlockKeys.add(blockKey);
       if (revealedPlannerBlockKeys.size > 600) {
@@ -458,6 +465,8 @@ function renderPlannerQueue(queue) {
     }
     plannerQueue.appendChild(item);
   });
+
+  scrollPlannerQueueToLatest();
 }
 
 function normalizeGoalText(value) {
@@ -548,6 +557,8 @@ socket.on("camera_update", (payload) => {
 });
 
 socket.on("foresight_trace", (payload) => {
+  foresightMessageReceiveCount += 1;
+  console.log("Foresight messages received:", foresightMessageReceiveCount);
   transientIndicator = null;
   latestForesightQueue = Array.isArray(payload?.queue) ? payload.queue : [];
   transientIndicator = deriveTransientIndicator(latestForesightQueue);

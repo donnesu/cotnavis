@@ -1,0 +1,17 @@
+24th
+*/robodata/spot_logs/arthurz/foresight_bags/experiment_logs/mission_20260515_150718 (foresight)
+
+*/robodata/spot_logs/arthurz/foresight_bags/experiment_logs/mission_20260514_142303 (foresight - rl)
+/robodata/spot_logs/arthurz/foresight_bags/experiment_logs/mission_20260514_143251 (foresight - j - rl)
+*/robodata/spot_logs/arthurz/foresight_bags/experiment_logs/mission_20260514_150055 (ecot)
+/robodata/spot_logs/arthurz/foresight_bags/experiment_logs/mission_20260514_152405 (lelan)
+ 
+*/robodata/spot_logs/arthurz/foresight_bags/experiment_logs/mission_20260516_144152 (foresight ahg broll)
+*/robodata/spot_logs/arthurz/foresight_bags/experiment_logs/mission_20260516_162141 (foresight atom cafe broll) 15, 16
+*/robodata/spot_logs/arthurz/foresight_bags/experiment_logs/mission_20260516_160916 (foresight cns broll)
+ 
+little field patio cafe
+/robodata/spot_logs/arthurz/foresight_bags/experiment_logs/mission_20260517_152542 (foresight - j - rl)
+*/robodata/spot_logs/arthurz/foresight_bags/experiment_logs/mission_20260517_152046 (foresight - rl)
+*/robodata/spot_logs/arthurz/foresight_bags/experiment_logs/mission_20260517_150730 (foresight)
+*/robodata/spot_logs/arthurz/foresight_bags/experiment_logs/mission_20260517_153137 (alpamayo)
