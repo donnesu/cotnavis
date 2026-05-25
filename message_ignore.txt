@@ -2,7 +2,7 @@
 */robodata/spot_logs/arthurz/foresight_bags/experiment_logs/mission_20260515_150718 (foresight)
 
 */robodata/spot_logs/arthurz/foresight_bags/experiment_logs/mission_20260514_142303 (foresight - rl)
-/robodata/spot_logs/arthurz/foresight_bags/experiment_logs/mission_20260514_143251 (foresight - j - rl)
+*/robodata/spot_logs/arthurz/foresight_bags/experiment_logs/mission_20260514_143251 (foresight - j - rl)
 */robodata/spot_logs/arthurz/foresight_bags/experiment_logs/mission_20260514_150055 (ecot)
 /robodata/spot_logs/arthurz/foresight_bags/experiment_logs/mission_20260514_152405 (lelan)
  
@@ -11,7 +11,22 @@
 */robodata/spot_logs/arthurz/foresight_bags/experiment_logs/mission_20260516_160916 (foresight cns broll)
  
 little field patio cafe
-/robodata/spot_logs/arthurz/foresight_bags/experiment_logs/mission_20260517_152542 (foresight - j - rl)
+*/robodata/spot_logs/arthurz/foresight_bags/experiment_logs/mission_20260517_152542 (foresight - j - rl)
 */robodata/spot_logs/arthurz/foresight_bags/experiment_logs/mission_20260517_152046 (foresight - rl)
 */robodata/spot_logs/arthurz/foresight_bags/experiment_logs/mission_20260517_150730 (foresight)
 */robodata/spot_logs/arthurz/foresight_bags/experiment_logs/mission_20260517_153137 (alpamayo)
+
+
+wcp (you'll have to skip some frames for foresight due to double sampling)
+/robodata/spot_logs/arthurz/foresight_bags/experiment_logs/mission_20260515_010748 (foresight)
+/robodata/spot_logs/arthurz/foresight_bags/experiment_logs/mission_20260514_234637 (foresight - rl)
+/robodata/spot_logs/arthurz/foresight_bags/experiment_logs/mission_20260515_002146 (foresight - j - rl)
+/robodata/spot_logs/arthurz/foresight_bags/experiment_logs/mission_20260515_004109 (ecot)
+/robodata/spot_logs/arthurz/foresight_bags/experiment_logs/mission_20260515_010328 (lelan)
+ 
+ahg parking lot
+/robodata/spot_logs/arthurz/foresight_bags/experiment_logs/mission_20260517_145421 (foresight)
+/robodata/spot_logs/arthurz/foresight_bags/experiment_logs/mission_20260517_144530 (foresight - rl)
+/robodata/spot_logs/arthurz/foresight_bags/experiment_logs/mission_20260517_145748 (foresight - j - rl)
+/robodata/spot_logs/arthurz/foresight_bags/experiment_logs/mission_20260511_233133 (ecot)
+/robodata/spot_logs/arthurz/foresight_bags/experiment_logs/mission_20260511_221728 (lelan)

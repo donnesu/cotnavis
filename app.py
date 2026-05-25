@@ -274,13 +274,15 @@ def extract_fix_text(*texts):
     for text in texts:
         if not text:
             continue
-        cleaned = re.sub(r"<[^>]+>", " ", text)
-        cleaned = re.sub(r"\s*\[[^\]]+\]\s*$", "", cleaned)
-        cleaned = " ".join(cleaned.split())
+        # Fall back to explicit "fix:" style guidance when XML-like tags are absent.
+        match = re.search(r"\bfix\s*:\s*(.+)$", text, flags=re.IGNORECASE | re.DOTALL)
+        if not match:
+            continue
+        cleaned = " ".join(match.group(1).split())
         if cleaned:
             return cleaned
 
-    return "No suggested fix provided."
+    return None
 
 
 def encode_compressed_image(msg):
@@ -439,32 +441,28 @@ def normalize_foresight_blocks(msg, topic, timestamp):
         "received_at": timestamp,
     }
 
-    if verdict is True:
-        return [
-            {
-                **base_block,
-                "type": "accepted",
-                "status": "ACCEPTED",
-                "display_text": "",
-            }
-        ]
+    blocks = [
+        {
+            **base_block,
+            "type": "accepted",
+            "status": "ACCEPTED",
+            "display_text": "",
+        }
+    ]
 
     suggestion = extract_fix_text(reason, critic_text, motion_text, thinking_text)
-    return [
-        {
-            **base_block,
-            "type": "rejected",
-            "status": "REJECTED",
-            "display_text": "",
-        },
-        {
-            **base_block,
-            "type": "fix",
-            "status": "FIX",
-            "display_text": suggestion,
-            "motion_image": None,
-        },
-    ]
+    if suggestion:
+        blocks.append(
+            {
+                **base_block,
+                "type": "fix",
+                "status": "FIX",
+                "display_text": suggestion,
+                "motion_image": None,
+            }
+        )
+
+    return blocks
 
 
 class ReplayDashboardNode(Node):
